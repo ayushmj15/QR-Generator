@@ -19,7 +19,7 @@
 .hero-logo {
   width: 120px;
   height: 120px;
-  border-radius: 30px;
+  border-radius: 42px; /* Increased to cut off the white corners of the JPEG */
   box-shadow: 0 15px 35px rgba(0,0,0,0.5), 0 0 20px var(--accent-glow);
   margin-bottom: 1rem;
 }
