@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { generateQRDataURI, downloadImage } from '../utils/qrHelpers';
 import './QRGenerator.css';
@@ -7,6 +7,25 @@ const QRGenerator = () => {
   const [inputText, setInputText] = useState('');
   const [qrCodeURI, setQrCodeURI] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  
+  // Customization state
+  const [fgColor, setFgColor] = useState('#ffffff');
+  const [bgColor, setBgColor] = useState('#050508');
+  const [qrStyle, setQrStyle] = useState('square');
+  const [logo, setLogo] = useState(null);
+  
+  const fileInputRef = useRef(null);
+
+  const handleLogoUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogo(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleGenerate = async () => {
     if (!inputText.trim()) return;
@@ -18,7 +37,13 @@ const QRGenerator = () => {
     await new Promise(resolve => setTimeout(resolve, 800));
     
     try {
-      const uri = await generateQRDataURI(inputText);
+      const uri = await generateQRDataURI(inputText, {
+        fgColor,
+        // Treat our default dark color as transparent background for the QR
+        bgColor: bgColor === '#050508' ? 'rgba(0,0,0,0)' : bgColor,
+        qrStyle,
+        logo
+      });
       setQrCodeURI(uri);
     } catch (error) {
       console.error("Failed to generate QR");
@@ -49,6 +74,72 @@ const QRGenerator = () => {
           onChange={(e) => setInputText(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleGenerate()}
         />
+      </div>
+
+      <div className="customization-panel">
+        <div className="custom-group">
+          <label>QR Color</label>
+          <div className="color-picker-wrapper">
+            <input 
+              type="color" 
+              value={fgColor} 
+              onChange={(e) => setFgColor(e.target.value)} 
+            />
+            <span className="color-hex">{fgColor}</span>
+          </div>
+        </div>
+        
+        <div className="custom-group">
+          <label>Background</label>
+          <div className="color-picker-wrapper">
+            <input 
+              type="color" 
+              value={bgColor} 
+              onChange={(e) => setBgColor(e.target.value)} 
+            />
+            <span className="color-hex">{bgColor}</span>
+          </div>
+        </div>
+        
+        <div className="custom-group">
+          <label>Pattern Style</label>
+          <select 
+            value={qrStyle} 
+            onChange={(e) => setQrStyle(e.target.value)}
+            className="style-select"
+          >
+            <option value="square">Square</option>
+            <option value="dots">Dots</option>
+            <option value="rounded">Rounded</option>
+            <option value="extra-rounded">Extra Rounded</option>
+          </select>
+        </div>
+        
+        <div className="custom-group logo-upload-group">
+          <label>Center Logo</label>
+          <input 
+            type="file" 
+            accept="image/*" 
+            ref={fileInputRef} 
+            onChange={handleLogoUpload} 
+            style={{ display: 'none' }} 
+          />
+          <div className="logo-preview-area">
+            {logo ? (
+               <div className="logo-preview">
+                 <img src={logo} alt="Preview" />
+                 <button className="remove-logo" onClick={() => setLogo(null)}>✕</button>
+               </div>
+            ) : (
+              <button 
+                className="btn-upload" 
+                onClick={() => fileInputRef.current?.click()}
+              >
+                Upload Icon
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="button-group">
@@ -90,7 +181,6 @@ const QRGenerator = () => {
               src={qrCodeURI} 
               alt="Generated QR Code" 
               className="qr-image"
-              // Dramatic 3D Flip Entry
               initial={{ opacity: 0, rotateY: -180, scale: 0.5, z: -200 }}
               animate={{ opacity: 1, rotateY: 0, scale: 1, z: 0 }}
               transition={{ duration: 1, type: 'spring', bounce: 0.5 }}

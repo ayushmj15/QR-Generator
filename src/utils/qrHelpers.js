@@ -1,24 +1,50 @@
-import QRCode from 'qrcode';
+import QRCodeStyling from 'qr-code-styling';
 
 /**
- * Generates a Data URI for a QR code from the given input text.
+ * Generates a Blob URL for a QR code from the given input text.
  * @param {string} text - The input data
- * @returns {Promise<string>} The Data URI (base64 image)
+ * @param {Object} options - Customization options
+ * @returns {Promise<string>} The Blob URL (can be used as image source or download link)
  */
-export const generateQRDataURI = async (text) => {
+export const generateQRDataURI = async (text, options = {}) => {
   if (!text) return null;
   
+  const {
+    fgColor = '#ffffff',
+    bgColor = '#00000000', // transparent
+    qrStyle = 'square', // square, dots, rounded, extra-rounded
+    logo = null
+  } = options;
+
   try {
-    const dataUri = await QRCode.toDataURL(text, {
+    const qrCode = new QRCodeStyling({
       width: 400,
-      margin: 2,
-      color: {
-        dark: '#ffffff',
-        light: '#05050800' // transparent background
+      height: 400,
+      data: text,
+      image: logo,
+      dotsOptions: {
+        color: fgColor,
+        type: qrStyle
       },
-      errorCorrectionLevel: 'H' // High error correction for aesthetics
+      backgroundOptions: {
+        color: bgColor,
+      },
+      imageOptions: {
+        crossOrigin: "anonymous",
+        margin: 10
+      },
+      cornersSquareOptions: {
+        type: qrStyle === 'dots' ? 'dot' : (qrStyle === 'square' ? 'square' : 'extra-rounded')
+      },
+      cornersDotOptions: {
+        type: qrStyle === 'dots' ? 'dot' : 'square'
+      }
     });
-    return dataUri;
+
+    const blob = await qrCode.getRawData("png");
+    if (!blob) throw new Error("Failed to generate blob");
+    
+    return URL.createObjectURL(blob);
   } catch (err) {
     console.error('Error generating QR code:', err);
     throw err;
@@ -26,14 +52,14 @@ export const generateQRDataURI = async (text) => {
 };
 
 /**
- * Downloads a data URI as an image file.
- * @param {string} dataUri - The Data URI
+ * Downloads a data URI or Blob URL as an image file.
+ * @param {string} url - The URL to download
  * @param {string} filename - The desired filename
  */
-export const downloadImage = (dataUri, filename = 'qrcode.png') => {
+export const downloadImage = (url, filename = 'qrcode.png') => {
   const link = document.createElement('a');
   link.download = filename;
-  link.href = dataUri;
+  link.href = url;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
